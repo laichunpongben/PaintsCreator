@@ -18,7 +18,7 @@ class PixivLoader(pixivpy3.PixivAPI):
         self.login(client_info['id'], client_info['pwd'])
 
     def generate_illust(self, artist_id):
-        result = self.users_works(artist_id)
+        result = self.users_works(artist_id, per_page=1000)
         with open('artist.json', 'w') as artist_json:
             json.dump(result, artist_json)
 
@@ -34,13 +34,16 @@ class PixivLoader(pixivpy3.PixivAPI):
             os.mkdir(fpath)
 
         aapi = pixivpy3.AppPixivAPI()
+        illust_count = 0
         for illust in self.generate_illust(artist_id):
             aapi.download(illust.image_urls.large, fpath)
+            print('Saving {}'.format(illust.id))
+            illust_count += 1
             time.sleep(self.DOWNLOAD_DELAY)
 
-        print('Illusts saved')
+        print('Total {} illusts saved'.format(illust_count))
 
 if __name__ == '__main__':
-    artist_id = 4889903
+    artist_id = 946272
     pixiv_loader = PixivLoader()
     pixiv_loader.save_illusts(artist_id)
