@@ -77,18 +77,35 @@ class PixivLoader(pixivpy3.PixivAPI):
                     self.make_thumbnail(os.path.join(root, f))
 
     def serialize(self):
-        np.savez('pixiv.npz', x, y)
+        thumbnail_fpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                       'thumbnails')
+        thumbnails = os.listdir(thumbnail_fpath)
+        n = len(thumbnails)
+        tensor = np.zeros((n, 128, 128, 3))
+        for i, f in enumerate(thumbnails):
+            image = Image.open(os.path.join(thumbnail_fpath, f))
+            tensor[i] = np.asarray(image)
+
+        dataset_fpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     'datasets')
+        if not os.path.exists(dataset_fpath):
+            os.mkdir(dataset_fpath)
+        np.savez(os.path.join(dataset_fpath,
+                              'pixiv.npz'), tensor)
 
     def load_data(self):
         fpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              'datasets',
                              'pixiv.npz')
         try:
-            f = np.load(path)
+            f = np.load(fpath)
+            print(f.files)
             x_train = f['x_train']
             y_train = f['y_train']
             x_test = f['x_test']
             y_test = f['y_test']
+        except Exception as e:
+            print(e)
         finally:
             f.close()
         return (x_train, y_train), (x_test, y_test)
@@ -97,4 +114,5 @@ if __name__ == '__main__':
     artist_id = 946272
     pixiv_loader = PixivLoader()
     # pixiv_loader.save_illusts(artist_id)
-    pixiv_loader.make_dataset()
+    # pixiv_loader.make_dataset()
+    pixiv_loader.serialize()
