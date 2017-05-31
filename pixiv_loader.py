@@ -15,8 +15,10 @@ from PIL import Image
 class PixivLoader(pixivpy3.PixivAPI):
     DOWNLOAD_DELAY = 2
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         super(PixivLoader, self).__init__()
+        self.color = kwargs.pop('color', 0)
+        self.pixel = kwargs.pop('pixel', 128)
         self._auth()
 
     def _auth(self):
@@ -51,7 +53,7 @@ class PixivLoader(pixivpy3.PixivAPI):
         print('Total {} illusts saved'.format(illust_count))
 
     def make_thumbnail(self, infile):
-        size = 128, 128
+        size = self.pixel, self.pixel
         outfile = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               'thumbnails',
                               os.path.splitext(os.path.basename(infile))[0] +
@@ -60,7 +62,11 @@ class PixivLoader(pixivpy3.PixivAPI):
         try:
             image = Image.open(infile)
             image.thumbnail(size, Image.ANTIALIAS)
-            background = Image.new('RGBA', size, (255, 255, 255, 0))
+            if self.color:
+                background = Image.new('RGBA', size, (255, 255, 255, 0))
+            else:
+                image = image.convert('L')
+                background = Image.new('L', size, (255, 255, 255))
             background.paste(
                 image, (int((size[0] - image.size[0]) / 2), int((size[1] - image.size[1]) / 2))
             )
@@ -81,10 +87,16 @@ class PixivLoader(pixivpy3.PixivAPI):
                                        'thumbnails')
         thumbnails = os.listdir(thumbnail_fpath)
         n = len(thumbnails)
-        tensor = np.zeros((n, 128, 128, 3))
+        if self.color:
+            tensor = np.zeros((n, self.pixel, self.pixel, 3))
+        else:
+            tensor = np.zeros((n, self.pixel, self.pixel))
         for i, f in enumerate(thumbnails):
             image = Image.open(os.path.join(thumbnail_fpath, f))
-            tensor[i] = np.asarray(image)
+            pixels = np.asarray(image)
+            tensor[i] = pixels
+
+        print(tensor.shape)
 
         dataset_fpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                      'datasets')
@@ -97,6 +109,7 @@ class PixivLoader(pixivpy3.PixivAPI):
         fpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              'datasets',
                              'pixiv.npz')
+        f = None
         try:
             f = np.load(fpath)
             print(f.files)
@@ -107,7 +120,8 @@ class PixivLoader(pixivpy3.PixivAPI):
         except Exception as e:
             print(e)
         finally:
-            f.close()
+            if f:
+                f.close()
         return (x_train, y_train), (x_test, y_test)
 
 if __name__ == '__main__':
