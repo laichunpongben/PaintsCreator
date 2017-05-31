@@ -4,3 +4,4 @@
 *.npz
 illusts/
 datasets/
+__pycache__/
