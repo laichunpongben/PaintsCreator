@@ -9,7 +9,7 @@ if sys.version_info >= (3, 0):
 else:
     import cPickle as pickle
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 
 class PixivLoader(pixivpy3.PixivAPI):
@@ -63,10 +63,12 @@ class PixivLoader(pixivpy3.PixivAPI):
             image = Image.open(infile)
             image.thumbnail(size, Image.ANTIALIAS)
             if self.color:
+                image = image.filter(ImageFilter.CONTOUR)
                 background = Image.new('RGBA', size, (255, 255, 255, 0))
             else:
                 image = image.convert('L')
-                background = Image.new('L', size, (255, 255, 255))
+                image = image.filter(ImageFilter.CONTOUR)
+                background = Image.new('L', size, 'white')
             background.paste(
                 image, (int((size[0] - image.size[0]) / 2), int((size[1] - image.size[1]) / 2))
             )
@@ -82,7 +84,7 @@ class PixivLoader(pixivpy3.PixivAPI):
                 if f.endswith(tuple(image_ext)):
                     self.make_thumbnail(os.path.join(root, f))
 
-    def serialize(self):
+    def serialize(self, outfile):
         thumbnail_fpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                        'thumbnails')
         thumbnails = os.listdir(thumbnail_fpath)
@@ -103,7 +105,7 @@ class PixivLoader(pixivpy3.PixivAPI):
         if not os.path.exists(dataset_fpath):
             os.mkdir(dataset_fpath)
         np.savez(os.path.join(dataset_fpath,
-                              'pixiv.npz'), tensor)
+                              outfile), tensor)
 
     def load_data(self):
         fpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -128,5 +130,5 @@ if __name__ == '__main__':
     artist_id = 946272
     pixiv_loader = PixivLoader()
     # pixiv_loader.save_illusts(artist_id)
-    # pixiv_loader.make_dataset()
-    pixiv_loader.serialize()
+    pixiv_loader.make_dataset()
+    pixiv_loader.serialize('pixiv.npz')
